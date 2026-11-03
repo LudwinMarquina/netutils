@@ -125,6 +125,10 @@ or manually from the Actions tab:
 
 Pull requests are built and tested but never pushed.
 
+The Docker Hub page (overview and short description) comes from [`DOCKERHUB.md`](DOCKERHUB.md).
+[`dockerhub-description.yml`](.github/workflows/dockerhub-description.yml) syncs it whenever that
+file changes on `main`. This workflow never rebuilds the image.
+
 **Docker Hub tag immutability.** Lock only the tags that are pushed exactly once, and leave the
 moving tags (`latest`, `X.Y`, `X`) mutable. In Docker Hub → repository → *Settings* → *Immutable
 tags*, use these rules instead of `.*`:
