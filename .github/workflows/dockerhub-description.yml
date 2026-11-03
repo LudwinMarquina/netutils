@@ -1,0 +1,30 @@
+name: dockerhub-description
+
+# Syncs DOCKERHUB.md (overview) and the short description to hub.docker.com/r/ludwin20/netutils.
+# Kept separate from docker.yml so editing the description never rebuilds or re-tags the image.
+on:
+  push:
+    branches: [main]
+    paths:
+      - DOCKERHUB.md
+      - .github/workflows/dockerhub-description.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ludwin20/netutils
+          short-description: "Lightweight multi-arch network troubleshooting toolbox: ping, mtr, tcpdump, tcping, paping, curl"
+          readme-filepath: ./DOCKERHUB.md
+          enable-url-completion: true
