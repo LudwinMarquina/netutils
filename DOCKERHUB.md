@@ -153,10 +153,17 @@ Set `-e SKIP_ICMP=1` where outbound ICMP is blocked.
 
 ## Image details
 
-- **Base:** `alpine:3.22`, with `tini` as PID 1. The default command is `bash`, running as `root` so raw sockets and capture work.
+- **Base:** `alpine:3.24` (digest-pinned), with `tini` as PID 1. `tcping` is built with Go 1.27. The default command is `bash`, running as `root` so raw sockets and capture work.
 - **Labels:** OCI `source`, `revision`, `version`, `created` and `licenses` labels, plus SBOM and provenance attestations.
 - **Bigger build:** you can build a larger variant with extra Alpine packages, for example Wireshark's CLI:
   `docker build --build-arg EXTRA_PKGS="tshark" -t netutils https://github.com/LudwinMarquina/netutils.git`
+
+## Security
+
+- **Pinned bases:** the base images are pinned by digest, and Dependabot keeps them current.
+- **Scan gate:** every build is scanned with Trivy before it's pushed. A fixable HIGH or CRITICAL vulnerability blocks the release.
+- **Weekly scan:** the published `latest` is re-scanned every week, and findings are tracked in [GitHub issues](https://github.com/LudwinMarquina/netutils/issues).
+- **`X.Y.Z` tags never change:** stay on the moving `1` / `1.1` tags, or on `latest`, to get security fixes automatically.
 
 ## License
 
