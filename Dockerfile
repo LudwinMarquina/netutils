@@ -1,9 +1,8 @@
 # syntax=docker/dockerfile:1
-ARG ALPINE_VERSION=3.22
-ARG GO_VERSION=1.24
+# Base images are pinned by tag + multi-arch index digest; Dependabot opens PRs to bump both.
 
 # ---- build tcping/paping (tiny static Go binary, cross-compiled natively) ----
-FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS tcping
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb AS tcping
 ARG TARGETOS TARGETARCH
 WORKDIR /src
 COPY tcping/ .
@@ -11,7 +10,7 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -trimpath -ldflags="-s -w" -o /out/tcping .
 
 # ---- runtime ----
-FROM alpine:${ALPINE_VERSION}
+FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 # Extra packages can be added at build time, e.g. --build-arg EXTRA_PKGS="tshark"
 ARG EXTRA_PKGS=""

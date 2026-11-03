@@ -1,0 +1,75 @@
+name: security-scan
+
+# Weekly vulnerability scan of the published image. Catches CVEs disclosed after a release.
+# Scans only: it never builds or pushes, so it can't collide with immutable tags.
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ludwin20/netutils:latest
+  TRIVY_IMAGE: aquasec/trivy:0.76.1
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # upload SARIF to code scanning
+      issues: write            # open/update the tracking issue
+    steps:
+      - name: Vulnerability scan (full report)
+        run: |
+          mkdir -p "$HOME/.cache/trivy"
+          docker run --rm -v "$HOME/.cache/trivy:/root/.cache/trivy" -v "$PWD:/out" "$TRIVY_IMAGE" \
+            image --quiet --scanners vuln --format sarif -o /out/trivy.sarif "$IMAGE"
+
+      - name: Upload scan to GitHub code scanning
+        if: hashFiles('trivy.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy.sarif
+          category: published-latest
+
+      - name: Check for fixable HIGH/CRITICAL
+        id: gate
+        run: |
+          set +e
+          docker run --rm -v "$HOME/.cache/trivy:/root/.cache/trivy" "$TRIVY_IMAGE" \
+            image --quiet --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL \
+            --exit-code 1 --format table "$IMAGE" > report.txt
+          rc=$?
+          cat report.txt
+          exit $rc
+
+      - name: Open or update tracking issue
+        if: failure() && steps.gate.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Fixable HIGH/CRITICAL vulnerabilities in ${IMAGE}"
+          {
+            echo "The weekly scan found HIGH/CRITICAL vulnerabilities that have fixes available."
+            echo
+            echo "Scan run: ${RUN_URL}"
+            echo
+            echo '```'
+            head -c 60000 report.txt
+            echo '```'
+            echo
+            echo "**Remediation:**"
+            echo "1. Merge any pending Dependabot base-image PRs. If a fix needs a newer Alpine or Go than Dependabot proposes, bump the Dockerfile by hand."
+            echo "2. Cut a patch release (for example \`v1.1.0\` → \`v1.1.1\`). Release builds skip the layer cache, so a release on the same commit still picks up patched Alpine packages."
+          } > body.md
+          n=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "in:title \"$title\"" \
+                --json number --jq '.[0].number // empty')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" -R "$GITHUB_REPOSITORY" --body-file body.md
+          else
+            gh issue create -R "$GITHUB_REPOSITORY" --title "$title" --body-file body.md
+          fi

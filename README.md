@@ -151,6 +151,29 @@ git checkout main && git pull
 git tag -a v1.1.0 -m "v1.1.0" && git push origin v1.1.0
 ```
 
+## Security
+
+| Layer | What it does |
+|---|---|
+| **Pinned bases** | `alpine` and `golang` are pinned by tag + multi-arch digest in the `Dockerfile`, so builds are reproducible. |
+| **Dependabot** ([`dependabot.yml`](.github/dependabot.yml)) | Weekly PRs bump base-image tags/digests (e.g. Alpine 3.24 → 3.25, Go 1.27 → 1.28) and GitHub Actions. |
+| **Scan gate** ([`docker.yml`](.github/workflows/docker.yml)) | Every build is scanned with Trivy before push. A **fixable** HIGH/CRITICAL fails the build, so nothing is published. The full report goes to the repo's *Security → Code scanning* tab. |
+| **Weekly scan** ([`security-scan.yml`](.github/workflows/security-scan.yml)) | Mondays 06:00 UTC: scans the published `latest`, updates code scanning, and opens or updates an issue if anything fixable shows up. |
+
+**Responding to a finding:**
+1. Merge the Dependabot PR, or bump the base image by hand.
+2. Merge it to `main`, then cut a patch release.
+
+Release builds skip the layer cache, so even a release on the same commit installs the newest patched Alpine packages. Published `X.Y.Z` tags are immutable and are never rebuilt. Move to the newest release, or pin the moving `X` / `X.Y` tags.
+
+Some findings have no fix released upstream yet. Grype reports them as NVD/CPE matches; Trivy doesn't flag them, since Alpine's database lists only fixed CVEs. The gate deliberately ignores them, and they're picked up once a fixed package exists.
+
+To scan locally:
+
+```bash
+docker run --rm aquasec/trivy:0.76.1 image --scanners vuln --ignore-unfixed ludwin20/netutils:latest
+```
+
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE).
