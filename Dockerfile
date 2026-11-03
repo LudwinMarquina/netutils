@@ -2,11 +2,13 @@
 ARG ALPINE_VERSION=3.22
 ARG GO_VERSION=1.24
 
-# ---- build tcping/paping (tiny static Go binary) ----
-FROM golang:${GO_VERSION}-alpine AS tcping
+# ---- build tcping/paping (tiny static Go binary, cross-compiled natively) ----
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS tcping
+ARG TARGETOS TARGETARCH
 WORKDIR /src
 COPY tcping/ .
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/tcping .
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build -trimpath -ldflags="-s -w" -o /out/tcping .
 
 # ---- runtime ----
 FROM alpine:${ALPINE_VERSION}
@@ -40,7 +42,9 @@ RUN ln -s tcping /usr/local/bin/paping \
  && echo 'PS1="\[\e[1;36m\][netutils \h]\[\e[0m\] \w # "' >> /root/.bashrc
 
 LABEL org.opencontainers.image.title="netutils" \
-      org.opencontainers.image.description="Lightweight Alpine image with network troubleshooting tools"
+      org.opencontainers.image.description="Lightweight Alpine image with network troubleshooting tools" \
+      org.opencontainers.image.source="https://github.com/LudwinMarquina/netutils" \
+      org.opencontainers.image.licenses="Apache-2.0"
 
 WORKDIR /root
 ENTRYPOINT ["/sbin/tini", "--"]

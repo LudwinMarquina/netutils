@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Smoke test: docker run --rm netutils netutils-test
+# Set SKIP_ICMP=1 where outbound ICMP is blocked (e.g. GitHub-hosted runners).
 fail=0
 for t in ping ping6 tracepath arping fping traceroute mtr tcping paping dig nslookup host drill whois \
          curl wget openssl ssh nc ncat nmap socat telnet tcpdump ngrep iftop nethogs iperf3 \
@@ -9,13 +10,13 @@ done
 [ $fail = 0 ] && echo "all binaries present"
 
 run() { echo; echo "### $*"; "$@" || { echo "FAILED: $*"; fail=1; }; }
-run ping -c 2 1.1.1.1
+[ "${SKIP_ICMP:-0}" = 1 ] || run ping -c 2 1.1.1.1
 run tcping -c 3 -i 0.3 1.1.1.1 443
 run tcping -c 2 -i 0.3 google.com:443
 run paping 1.1.1.1 -p 443 -c 3
 run dig +short cloudflare.com
 run curl -sS -o /dev/null -w "HTTP %{http_code} in %{time_total}s\n" https://example.com
-run traceroute -n -m 5 -q 1 1.1.1.1
+[ "${SKIP_ICMP:-0}" = 1 ] || run traceroute -n -m 5 -q 1 1.1.1.1
 run tcpdump --version
 run nmap -Pn -p 443 1.1.1.1
 
