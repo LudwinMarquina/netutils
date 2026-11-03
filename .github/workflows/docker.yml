@@ -1,9 +1,11 @@
 name: docker
 
 # Tagging convention (Docker Hub: ludwin20/netutils)
-#   git tag vX.Y.Z           -> X.Y.Z, X.Y, X, latest, sha-<short>
 #   push to main (image changed) -> latest, sha-<short>
+#   git tag vX.Y.Z           -> X.Y.Z, X.Y, X, latest
 #   pull request             -> build + test only, nothing pushed
+# Docker Hub immutability should cover only X.Y.Z and sha-* (each pushed exactly once);
+# latest, X.Y and X are moving tags.
 on:
   push:
     branches: [main]
@@ -55,7 +57,8 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
-            type=sha,prefix=sha-
+            # sha-* comes from the main run only; a release re-pushing it would hit immutability
+            type=sha,prefix=sha-,enable=${{ github.ref_type == 'branch' }}
             type=ref,event=pr
 
       - name: Build test image (amd64)
