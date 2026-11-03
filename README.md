@@ -105,10 +105,10 @@ docker run --rm netutils netutils-test
 
 | Tag | Meaning | Produced by |
 |---|---|---|
-| `1.2.3` | exact release (immutable in practice) | git tag `v1.2.3` |
+| `1.2.3` | exact release (immutable) | git tag `v1.2.3` |
 | `1.2`, `1` | latest patch / minor of that line | git tag `v1.2.3` |
 | `latest` | newest build from `main` or newest release | push to `main` / git tag |
-| `sha-<7 chars>` | the exact git commit the image was built from | every published build |
+| `sha-<7 chars>` | the exact git commit the image was built from | push to `main` |
 
 Versioning follows [SemVer](https://semver.org): **major** = breaking change (tool removed, entrypoint/
 shell changed), **minor** = tools added or base image bumped, **patch** = fixes. Pin a version
@@ -124,6 +124,18 @@ or manually from the Actions tab:
 2. on `main`/tags only: builds `linux/amd64` + `linux/arm64` and pushes to Docker Hub with SBOM + provenance.
 
 Pull requests are built and tested but never pushed.
+
+**Docker Hub tag immutability.** Lock only the tags that are pushed exactly once, and leave the
+moving tags (`latest`, `X.Y`, `X`) mutable. In Docker Hub → repository → *Settings* → *Immutable
+tags*, use these rules instead of `.*`:
+
+```
+^[0-9]+\.[0-9]+\.[0-9]+$
+^sha-[0-9a-f]+$
+```
+
+Because of this, re-running a pipeline for a commit or version that was already published fails
+by design. Publish a new commit or a new version instead.
 
 Required repository secrets: `DOCKERHUB_USERNAME` (`ludwin20`) and `DOCKERHUB_TOKEN`
 (a Docker Hub [access token](https://app.docker.com/settings/personal-access-tokens) with *Read & Write* scope).
